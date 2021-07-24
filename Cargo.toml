@@ -1,0 +1,27 @@
+[package]
+authors = ["Martin Amps <https://twitter.com/martinamps>"]
+name = "starter-snake-rust"
+version = "0.1.0"
+edition = "2018"
+
+homepage = "https://battlesnake.com"
+repository = "https://github.com/martinamps/starter-snake-rust/"
+
+readme = "README.md"
+keywords = ["battlesnake"]
+description = """
+A sample Rust implementation for Battlesnake
+"""
+
+[dependencies]
+rocket = { version = "0.4.10", default-features = false }
+serde = { version = "1.0.117", features = ["derive"] }
+serde_json = "1.0.59"
+log = "0.4.0"
+env_logger = "0.9.0"
+rand = "0.8.4"
+
+[dependencies.rocket_contrib]
+version = "0.4.10"
+default-features = false
+features = ["json"]
