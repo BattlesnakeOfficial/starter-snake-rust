@@ -4,11 +4,12 @@ use std::collections::HashMap;
 
 use log::info;
 
-use crate::{Battlesnake, Board, Coord, Game};
+use crate::{Battlesnake, Board, Game};
 
-pub fn snake_info() -> JsonValue {
+pub fn get_info() -> JsonValue {
     info!("INFO");
 
+    // Personalize the look of your snake per https://docs.battlesnake.com/references/personalization
     return json!({
         "apiversion": "1",
         "author": "",
@@ -27,8 +28,6 @@ pub fn end(game: &Game, _turn: &u32, _board: &Board, _you: &Battlesnake) {
 }
 
 pub fn get_move(game: &Game, _turn: &u32, _board: &Board, you: &Battlesnake) -> &'static str {
-    let my_head = &you.head;
-    let my_body = &you.body;
     let mut possible_moves: HashMap<_, _> = vec![
         ("up", true),
         ("down", true),
@@ -38,13 +37,22 @@ pub fn get_move(game: &Game, _turn: &u32, _board: &Board, you: &Battlesnake) -> 
     .into_iter()
     .collect();
 
-    filter_neck_moves(my_head, my_body, &mut possible_moves);
-
-    let moves = possible_moves
-        .into_iter()
-        .filter(|&(_, v)| v == true)
-        .map(|(k, _)| k)
-        .collect::<Vec<_>>();
+    // Step 0: Don't let your Battlesnake move back in on its own neck
+    let my_head = &you.head;
+    let my_neck = &you.body[1];
+    if my_neck.x < my_head.x {
+        // my neck is left of my head
+        possible_moves.insert("left", false);
+    } else if my_neck.x > my_head.x {
+        // my neck is right of my head
+        possible_moves.insert("right", false);
+    } else if my_neck.y < my_head.y {
+        // my neck is below my head
+        possible_moves.insert("down", false);
+    } else if my_neck.y > my_head.y {
+        // my neck is above my head
+        possible_moves.insert("up", false);
+    }
 
     // TODO: Step 1 - Don't hit walls.
     // Use board information to prevent your Battlesnake from moving beyond the boundaries of the board.
@@ -65,32 +73,14 @@ pub fn get_move(game: &Game, _turn: &u32, _board: &Board, you: &Battlesnake) -> 
 
     // Finally, choose a move from the available safe moves.
     // TODO: Step 5 - Select a move to make based on strategy, rather than random.
-
+    let moves = possible_moves
+        .into_iter()
+        .filter(|&(_, v)| v == true)
+        .map(|(k, _)| k)
+        .collect::<Vec<_>>();
     let chosen = moves.choose(&mut rand::thread_rng()).unwrap();
 
     info!("{} MOVE {}", game.id, chosen);
 
     return chosen;
-}
-
-fn filter_neck_moves(
-    my_head: &Coord,
-    my_body: &Vec<Coord>,
-    possible_moves: &mut HashMap<&str, bool>,
-) {
-    let my_neck = &my_body[1]; // The segment of body right after the head is the 'neck'
-
-    if my_neck.x < my_head.x {
-        // my neck is left of my head
-        possible_moves.insert("left", false);
-    } else if my_neck.x > my_head.x {
-        // my neck is right of my head
-        possible_moves.insert("right", false);
-    } else if my_neck.y < my_head.y {
-        // my neck is below my head
-        possible_moves.insert("down", false);
-    } else if my_neck.y > my_head.y {
-        // my neck is above my head
-        possible_moves.insert("up", false);
-    }
 }

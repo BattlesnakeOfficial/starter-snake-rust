@@ -5,7 +5,8 @@ extern crate rocket;
 #[macro_use]
 extern crate rocket_contrib;
 
-use log::{debug, info};
+use log::info;
+use rocket::config::{Config, Environment};
 use rocket::http::Status;
 use rocket_contrib::json::{Json, JsonValue};
 use serde::{Deserialize, Serialize};
@@ -13,7 +14,8 @@ use std::collections::HashMap;
 
 mod logic;
 
-// Types derived from https://docs.battlesnake.com/references/api#object-definitions
+// Request types derived from https://docs.battlesnake.com/references/api#object-definitions
+
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Game {
     id: String,
@@ -51,24 +53,23 @@ pub struct Coord {
     y: u32,
 }
 
-#[get("/")]
-fn handle_index() -> JsonValue {
-    // Personalize the look of your snake per https://docs.battlesnake.com/references/personalization
-    logic::snake_info()
-}
-
 #[derive(Deserialize, Serialize, Debug)]
-pub struct BattleSnakeRequest {
+pub struct GameState {
     game: Game,
     turn: u32,
     board: Board,
     you: Battlesnake,
 }
 
-#[post("/start", format = "json", data = "<start_req>")]
-fn handle_start(start_req: Json<BattleSnakeRequest>) -> Status {
-    debug!("payload: {:?}", start_req.0);
+#[get("/")]
+fn handle_index() -> JsonValue {
+    logic::get_info()
+}
 
+
+
+#[post("/start", format = "json", data = "<start_req>")]
+fn handle_start(start_req: Json<GameState>) -> Status {
     logic::start(
         &start_req.game,
         &start_req.turn,
@@ -80,10 +81,7 @@ fn handle_start(start_req: Json<BattleSnakeRequest>) -> Status {
 }
 
 #[post("/move", format = "json", data = "<move_req>")]
-fn handle_move(move_req: Json<BattleSnakeRequest>) -> JsonValue {
-    info!("received move request for game {}", move_req.game.id);
-    debug!("payload: {:?}", move_req.0);
-
+fn handle_move(move_req: Json<GameState>) -> JsonValue {
     let chosen = logic::get_move(
         &move_req.game,
         &move_req.turn,
@@ -95,21 +93,26 @@ fn handle_move(move_req: Json<BattleSnakeRequest>) -> JsonValue {
 }
 
 #[post("/end", format = "json", data = "<end_req>")]
-fn handle_end(end_req: Json<BattleSnakeRequest>) -> Status {
-    debug!("payload: {:?}", end_req.0);
-
+fn handle_end(end_req: Json<GameState>) -> Status {
     logic::end(&end_req.game, &end_req.turn, &end_req.board, &end_req.you);
 
     Status::Ok
 }
 
 fn main() {
+    let address = "0.0.0.0";
+    let port = 8080;
+
     env_logger::init();
 
-    rocket::ignite()
-        .mount(
-            "/",
-            routes![handle_index, handle_start, handle_move, handle_end],
-        )
+    let config = Config::build(Environment::Development)
+      .address(address)
+      .port(port)
+      .finalize()
+      .unwrap();
+
+    info!("Starting Battlesnake Server at http://{}:{}...", address, port);
+    rocket::custom(config)
+        .mount("/", routes![handle_index, handle_start, handle_move, handle_end])
         .launch();
 }
