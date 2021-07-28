@@ -11,10 +11,12 @@ use rocket::http::Status;
 use rocket_contrib::json::{Json, JsonValue};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::env;
 
 mod logic;
 
 // Request types derived from https://docs.battlesnake.com/references/api#object-definitions
+// For a full example of Game Board data, see https://docs.battlesnake.com/references/api/sample-move-request
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Game {
@@ -101,7 +103,12 @@ fn handle_end(end_req: Json<GameState>) -> Status {
 
 fn main() {
     let address = "0.0.0.0";
-    let port = 8080;
+    let env_port = env::var("PORT").ok();
+    let env_port = env_port
+        .as_ref()
+        .map(String::as_str)
+        .unwrap_or("8080");
+    let port = env_port.parse::<u16>().unwrap();
 
     env_logger::init();
 

@@ -7,6 +7,7 @@ This is a basic implementation of the [Battlesnake API](https://docs.battlesnake
 ## Technologies Used
 
 * [Rust](https://www.rust-lang.org/)
+* [Rocket](https://rocket.rs)
 
 
 ## Quickstart
@@ -45,49 +46,34 @@ Whenever you update these values, go to the page for your Battlesnake and select
 On every turn of each game your Battlesnake receives information about the game board and must decide its next move.
 
 Locate the `get_move` function inside [logic.rs](src/logic.rs#L30). Possible moves are "up", "down", "left", or "right". To start your Battlesnake will choose a move randomly. Your goal as a developer is to read information sent to you about the board and decide where your Battlesnake should move next. This is the code you will want to edit.
+C and Licence, updating ReadMe, adding Heroku support)
 
 See the [Battlesnake Game Rules](https://docs.battlesnake.com/references/rules) for more information on playing the game, moving around the board, and improving your algorithm.
 
-## Running Your Battlesnake Locally
+## (Optional) Running Your Battlesnake Locally
 
-First clone the repository
-
-```shell
-git clone https://github.com/martinamps/starter-snake-rust
-cd starter-snake-rust
-```
-
-Next, because [rocket](https://rocket.rs) requires nightly builds of rust we recommend you use [rustup](https://rustup.rs/) to get started then set the project to use the nightly builds
+Because [rocket](https://rocket.rs) requires nightly builds of rust we recommend you use [rustup](https://rustup.rs/) to get started then set the project to use the nightly builds
 
 ```shell
 rustup override set nightly
 ```
 
-We recommend you install `watchexec`(https://github.com/watchexec/watchexec) to reload your snake each time you make a change 
-
-```shell
-brew install watchexec
-```
-
-Finally, run your snake!
-
-```shell
-watchexec --restart RUST_LOG=INFO cargo run
-```
-
 **Note:** You cannot create games on [play.battlesnake.com](https://play.battlesnake.com) using a locally running Battlesnake unless you install and use a port forwarding tool like [ngrok](https://ngrok.com/).
 
-To get started with ngrok simply:
+## Running Tests
+We're look for a community member to produce a very simple test suite for developers to expand! If this is something you are able to do, please feel free to make a Pull Request.
 
-```
-brew install ngrok
-ngrok http 8000
-```
+## (Optional) Running your Battlesnake on Heroku
 
-Then configure your snake to use the provided tunnel URL (eg: `https://3c91ab96xxx.ngrok.io`) in the dashboard!
+If you are interested in using Heroku to deploy your Battlesnake, you will need to [specify a buildpack](https://devcenter.heroku.com/articles/buildpacks#setting-a-buildpack-on-an-application) as Heroku does not directly supply one for Rust. You can use the [Heroku Buildpack for Rust](https://github.com/emk/heroku-buildpack-rust) and substitue the following Heroku commands for step 2 of the [Battlesnake Heroku guide.](https://docs.battlesnake.com/references/hosting-suggestions/heroku) :
+```shell
+heroku create [YOUR-APP-NAME]
+heroku buildpacks:set emk/rust
+git push heroku main
+heroku open
+```
 
 ---
-
 ## Playing Battlesnake
 
 ### Completing Challenges
