@@ -23,18 +23,16 @@ The [Quick Start Coding Guide](https://docs.battlesnake.com/guides/getting-start
 
 ## Customizing Your Battlesnake
 
-Locate the `snake_info` function inside [logic.rs](src/logic.rs#L9). Inside that function you should see a line that looks like this:
+Locate the `get_info` function inside [logic.rs](src/logic.rs#L9). Inside that function you should see a line that looks like this:
 
 ```rust
-pub fn snake_info() -> JsonValue {
-    return json!({
-        "apiversion": "1",
-        "author": "",
-        "color": "#888888",
-        "head": "default",
-        "tail": "default",
-    });
-}
+return json!({
+    "apiversion": "1",
+    "author": "",
+    "color": "#888888",
+    "head": "default",
+    "tail": "default",
+});
 ```
 
 This function is called by the game engine periodically to make sure your Battlesnake is healthy, responding correctly, and to determine how your Battlesnake will appear on the game board. See [Battlesnake Personalization](https://docs.battlesnake.com/references/personalization) for how to customize your Battlesnake's appearance using these values.
@@ -46,7 +44,6 @@ Whenever you update these values, go to the page for your Battlesnake and select
 On every turn of each game your Battlesnake receives information about the game board and must decide its next move.
 
 Locate the `get_move` function inside [logic.rs](src/logic.rs#L30). Possible moves are "up", "down", "left", or "right". To start your Battlesnake will choose a move randomly. Your goal as a developer is to read information sent to you about the board and decide where your Battlesnake should move next. This is the code you will want to edit.
-C and Licence, updating ReadMe, adding Heroku support)
 
 See the [Battlesnake Game Rules](https://docs.battlesnake.com/references/rules) for more information on playing the game, moving around the board, and improving your algorithm.
 
