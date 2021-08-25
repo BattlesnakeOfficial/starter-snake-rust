@@ -10,6 +10,7 @@ use rocket::config::{Config, Environment};
 use rocket::http::Status;
 use rocket_contrib::json::{Json, JsonValue};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::collections::HashMap;
 use std::env;
 
@@ -21,7 +22,7 @@ mod logic;
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Game {
     id: String,
-    ruleset: HashMap<String, String>,
+    ruleset: HashMap<String, Value>,
     timeout: u32,
 }
 
