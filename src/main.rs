@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::env;
+use rocket::fairing::AdHoc;
 
 mod logic;
 
@@ -121,6 +122,9 @@ fn main() {
 
     info!("Starting Battlesnake Server at http://{}:{}...", address, port);
     rocket::custom(config)
+        .attach(AdHoc::on_response("Server ID Middleware", | _, res| {
+            res.set_raw_header("Server", "BattlesnakeOfficial/starter-snake-rust");
+        }))
         .mount("/", routes![handle_index, handle_start, handle_move, handle_end])
         .launch();
 }
