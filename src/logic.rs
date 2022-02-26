@@ -1,12 +1,12 @@
 use rand::seq::SliceRandom;
-use rocket_contrib::json::JsonValue;
+use serde_json::{json, Value};
 use std::collections::HashMap;
 
 use log::info;
 
 use crate::{Battlesnake, Board, Game};
 
-pub fn get_info() -> JsonValue {
+pub fn get_info() -> Value {
     info!("INFO");
 
     // Personalize the look of your snake per https://docs.battlesnake.com/references/personalization
@@ -75,12 +75,12 @@ pub fn get_move(game: &Game, _turn: &u32, _board: &Board, you: &Battlesnake) -> 
     // TODO: Step 5 - Select a move to make based on strategy, rather than random.
     let moves = possible_moves
         .into_iter()
-        .filter(|&(_, v)| v == true)
+        .filter(|&(_, v)| v)
         .map(|(k, _)| k)
         .collect::<Vec<_>>();
     let chosen = moves.choose(&mut rand::thread_rng()).unwrap();
 
     info!("{} MOVE {}", game.id, chosen);
 
-    return chosen;
+    chosen
 }

@@ -1,19 +1,14 @@
-#![feature(proc_macro_hygiene, decl_macro)]
-
 #[macro_use]
 extern crate rocket;
-#[macro_use]
-extern crate rocket_contrib;
 
 use log::info;
-use rocket::config::{Config, Environment};
+use rocket::fairing::AdHoc;
 use rocket::http::Status;
-use rocket_contrib::json::{Json, JsonValue};
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use rocket::serde::{json::Json, Deserialize};
+use serde::Serialize;
+use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::env;
-use rocket::fairing::AdHoc;
 
 mod logic;
 
@@ -66,11 +61,9 @@ pub struct GameState {
 }
 
 #[get("/")]
-fn handle_index() -> JsonValue {
+fn handle_index() -> Value {
     logic::get_info()
 }
-
-
 
 #[post("/start", format = "json", data = "<start_req>")]
 fn handle_start(start_req: Json<GameState>) -> Status {
@@ -85,7 +78,7 @@ fn handle_start(start_req: Json<GameState>) -> Status {
 }
 
 #[post("/move", format = "json", data = "<move_req>")]
-fn handle_move(move_req: Json<GameState>) -> JsonValue {
+fn handle_move(move_req: Json<GameState>) -> Value {
     let chosen = logic::get_move(
         &move_req.game,
         &move_req.turn,
@@ -103,28 +96,28 @@ fn handle_end(end_req: Json<GameState>) -> Status {
     Status::Ok
 }
 
-fn main() {
-    let address = "0.0.0.0";
-    let env_port = env::var("PORT").ok();
-    let env_port = env_port
-        .as_ref()
-        .map(String::as_str)
-        .unwrap_or("8080");
-    let port = env_port.parse::<u16>().unwrap();
+#[launch]
+fn rocket() -> _ {
+    if let Ok(port) = env::var("PORT") {
+        env::set_var("ROCKET_PORT", &port);
+    }
+
+    if let Err(_) = env::var("RUST_LOG") {
+        env::set_var("RUST_LOG", "info");
+    }
 
     env_logger::init();
 
-    let config = Config::build(Environment::Development)
-      .address(address)
-      .port(port)
-      .finalize()
-      .unwrap();
+    info!("Starting Battlesnake Server...");
 
-    info!("Starting Battlesnake Server at http://{}:{}...", address, port);
-    rocket::custom(config)
-        .attach(AdHoc::on_response("Server ID Middleware", | _, res| {
-            res.set_raw_header("Server", "BattlesnakeOfficial/starter-snake-rust");
+    rocket::build()
+        .attach(AdHoc::on_response("Server ID Middleware", |_, res| {
+            Box::pin(async move {
+                res.set_raw_header("Server", "BattlesnakeOfficial/starter-snake-rust");
+            })
         }))
-        .mount("/", routes![handle_index, handle_start, handle_move, handle_end])
-        .launch();
+        .mount(
+            "/",
+            routes![handle_index, handle_start, handle_move, handle_end],
+        )
 }
