@@ -1,2 +1,2 @@
 language = "rust"
-run = "bash -c \"[ -d ~/.cargo ] || bash <(curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs) -y --default-toolchain nightly; ~/.cargo/bin/cargo build; RUST_LOG=info target/debug/starter-snake-rust\""
+run = "cargo run"
