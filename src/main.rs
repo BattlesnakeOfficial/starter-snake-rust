@@ -61,8 +61,8 @@ pub struct GameState {
 }
 
 #[get("/")]
-fn handle_index() -> Value {
-    logic::get_info()
+fn handle_index() -> Json<Value> {
+    Json(logic::get_info())
 }
 
 #[post("/start", format = "json", data = "<start_req>")]
@@ -78,7 +78,7 @@ fn handle_start(start_req: Json<GameState>) -> Status {
 }
 
 #[post("/move", format = "json", data = "<move_req>")]
-fn handle_move(move_req: Json<GameState>) -> Value {
+fn handle_move(move_req: Json<GameState>) -> Json<Value> {
     let chosen = logic::get_move(
         &move_req.game,
         &move_req.turn,
@@ -86,7 +86,7 @@ fn handle_move(move_req: Json<GameState>) -> Value {
         &move_req.you,
     );
 
-    return json!({ "move": chosen });
+    Json(json!({ "move": chosen }))
 }
 
 #[post("/end", format = "json", data = "<end_req>")]
