@@ -2,7 +2,7 @@
 
 ![Battlesnake Logo](https://media.battlesnake.com/social/StarterSnakeGitHubRepos_Rust.png)
 
-This is a basic implementation of the [Battlesnake API](https://docs.battlesnake.com/references/api) in Rust. It's a great starting point for anyone wanting to program their first Battlesnake using Rust, and comes ready to deploy with [Replit](https://repl.it) and [Heroku](https://heroku.com), or you can use any other cloud provider you'd like. 
+This is a basic implementation of the [Battlesnake API](https://docs.battlesnake.com/references/api) in Rust. It's a great starting point for anyone wanting to program their first Battlesnake using Rust, and comes ready to deploy with [Replit](https://repl.it) and [Heroku](https://heroku.com), or you can use any other cloud provider you'd like.
 
 
 ## Technologies Used
@@ -50,11 +50,7 @@ See the [Battlesnake Game Rules](https://docs.battlesnake.com/references/rules) 
 
 ## (Optional) Running Your Battlesnake Locally
 
-Because [rocket](https://rocket.rs) requires nightly builds of rust we recommend you use [rustup](https://rustup.rs/) to get started then set the project to use the nightly builds
-
-```shell
-rustup override set nightly
-```
+Because [rocket](https://rocket.rs) requires an up to date build of rust we recommend you use [rustup](https://rustup.rs/) to get started then set the project to use the latest stable builds
 
 **Note:** You cannot create games on [play.battlesnake.com](https://play.battlesnake.com) using a locally running Battlesnake unless you install and use a port forwarding tool like [ngrok](https://ngrok.com/).
 
