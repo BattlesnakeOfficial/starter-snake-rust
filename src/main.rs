@@ -6,14 +6,14 @@ use rocket::fairing::AdHoc;
 use rocket::http::Status;
 use rocket::serde::{json::Json, Deserialize};
 use serde::Serialize;
-use serde_json::{json, Value};
+use serde_json::{Value};
 use std::collections::HashMap;
 use std::env;
 
 mod logic;
 
-// Request types derived from https://docs.battlesnake.com/references/api#object-definitions
-// For a full example of Game Board data, see https://docs.battlesnake.com/references/api/sample-move-request
+// API and Response Objects
+// See https://docs.battlesnake.com/api
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Game {
@@ -40,10 +40,7 @@ pub struct Battlesnake {
     head: Coord,
     length: u32,
     latency: String,
-
-    // Used in non-standard game modes
     shout: Option<String>,
-    squad: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -62,7 +59,7 @@ pub struct GameState {
 
 #[get("/")]
 fn handle_index() -> Json<Value> {
-    Json(logic::get_info())
+    Json(logic::info())
 }
 
 #[post("/start", format = "json", data = "<start_req>")]
@@ -79,14 +76,14 @@ fn handle_start(start_req: Json<GameState>) -> Status {
 
 #[post("/move", format = "json", data = "<move_req>")]
 fn handle_move(move_req: Json<GameState>) -> Json<Value> {
-    let chosen = logic::get_move(
+    let response = logic::get_move(
         &move_req.game,
         &move_req.turn,
         &move_req.board,
         &move_req.you,
     );
 
-    Json(json!({ "move": chosen }))
+    Json(response)
 }
 
 #[post("/end", format = "json", data = "<end_req>")]
@@ -118,7 +115,7 @@ fn rocket() -> _ {
     rocket::build()
         .attach(AdHoc::on_response("Server ID Middleware", |_, res| {
             Box::pin(async move {
-                res.set_raw_header("Server", "BattlesnakeOfficial/starter-snake-rust");
+                res.set_raw_header("Server", "battlesnake/github/starter-snake-rust");
             })
         }))
         .mount(

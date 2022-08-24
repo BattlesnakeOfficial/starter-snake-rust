@@ -1,34 +1,53 @@
+// Welcome to
+// __________         __    __  .__                               __
+// \______   \_____ _/  |__/  |_|  |   ____   ______ ____ _____  |  | __ ____
+//  |    |  _/\__  \\   __\   __\  | _/ __ \ /  ___//    \\__  \ |  |/ // __ \
+//  |    |   \ / __ \|  |  |  | |  |_\  ___/ \___ \|   |  \/ __ \|    <\  ___/
+//  |________/(______/__|  |__| |____/\_____>______>___|__(______/__|__\\_____>
+//
+// This file can be a nice home for your Battlesnake logic and helper functions.
+//
+// To get you started we've included code to prevent your Battlesnake from moving backwards.
+// For more info see docs.battlesnake.com
+
+use log::info;
 use rand::seq::SliceRandom;
 use serde_json::{json, Value};
 use std::collections::HashMap;
 
-use log::info;
-
 use crate::{Battlesnake, Board, Game};
 
-pub fn get_info() -> Value {
+// info is called when you create your Battlesnake on play.battlesnake.com
+// and controls your Battlesnake's appearance
+// TIP: If you open your Battlesnake URL in a browser you should see this data
+pub fn info() -> Value {
     info!("INFO");
 
-    // Personalize the look of your snake per https://docs.battlesnake.com/references/personalization
     return json!({
         "apiversion": "1",
-        "author": "",
-        "color": "#888888",
-        "head": "default",
-        "tail": "default",
+        "author": "", // TODO: Your Battlesnake Username
+        "color": "#888888", // TODO: Choose color
+        "head": "default", // TODO: Choose head
+        "tail": "default", // TODO: Choose tail
     });
 }
 
-pub fn start(game: &Game, _turn: &u32, _board: &Board, _you: &Battlesnake) {
-    info!("{} START", game.id);
+// start is called when your Battlesnake begins a game
+pub fn start(_game: &Game, _turn: &u32, _board: &Board, _you: &Battlesnake) {
+    info!("GAME START");
 }
 
-pub fn end(game: &Game, _turn: &u32, _board: &Board, _you: &Battlesnake) {
-    info!("{} END", game.id);
+// end is called when your Battlesnake finishes a game
+pub fn end(_game: &Game, _turn: &u32, _board: &Board, _you: &Battlesnake) {
+    info!("GAME OVER");
 }
 
-pub fn get_move(game: &Game, _turn: &u32, _board: &Board, you: &Battlesnake) -> &'static str {
-    let mut possible_moves: HashMap<_, _> = vec![
+// move is called on every turn and returns your next move
+// Valid moves are "up", "down", "left", or "right"
+// See https://docs.battlesnake.com/api/example-move for available data
+pub fn get_move(_game: &Game, turn: &u32, _board: &Board, you: &Battlesnake) -> Value {
+    
+    let mut is_move_safe: HashMap<_, _> = vec![
         ("up", true),
         ("down", true),
         ("left", true),
@@ -37,50 +56,46 @@ pub fn get_move(game: &Game, _turn: &u32, _board: &Board, you: &Battlesnake) -> 
     .into_iter()
     .collect();
 
-    // Step 0: Don't let your Battlesnake move back in on its own neck
-    let my_head = &you.head;
-    let my_neck = &you.body[1];
-    if my_neck.x < my_head.x {
-        // my neck is left of my head
-        possible_moves.insert("left", false);
-    } else if my_neck.x > my_head.x {
-        // my neck is right of my head
-        possible_moves.insert("right", false);
-    } else if my_neck.y < my_head.y {
-        // my neck is below my head
-        possible_moves.insert("down", false);
-    } else if my_neck.y > my_head.y {
-        // my neck is above my head
-        possible_moves.insert("up", false);
+    // We've included code to prevent your Battlesnake from moving backwards
+    let my_head = &you.body[0]; // Coordinates of your head
+    let my_neck = &you.body[1]; // Coordinates of your "neck"
+    
+    if my_neck.x < my_head.x { // Neck is left of head, don't move left
+        is_move_safe.insert("left", false);
+
+    } else if my_neck.x > my_head.x { // Neck is right of head, don't move right
+        is_move_safe.insert("right", false);
+
+    } else if my_neck.y < my_head.y { // Neck is below head, don't move down
+        is_move_safe.insert("down", false);
+    
+    } else if my_neck.y > my_head.y { // Neck is above head, don't move up
+        is_move_safe.insert("up", false);
     }
 
-    // TODO: Step 1 - Don't hit walls.
-    // Use board information to prevent your Battlesnake from moving beyond the boundaries of the board.
-    // board_width = move_req.board.width
-    // board_height = move_req.board.height
+    // TODO: Step 1 - Prevent your Battlesnake from moving out of bounds
+    // let board_width = &board.width;
+    // let board_height = &board.height;
 
-    // TODO: Step 2 - Don't hit yourself.
-    // Use body information to prevent your Battlesnake from colliding with itself.
-    // body = move_req.body
+    // TODO: Step 2 - Prevent your Battlesnake from colliding with itself
+    // let my_body = &you.body;
 
-    // TODO: Step 3 - Don't collide with others.
-    // Use snake vector to prevent your Battlesnake from colliding with others.
-    // snakes = move_req.board.snakes
+    // TODO: Step 3 - Prevent your Battlesnake from colliding with other Battlesnakes
+    // let opponents = &board.snakes;
 
-    // TODO: Step 4 - Find food.
-    // Use board information to seek out and find food.
-    // food = move_req.board.food
-
-    // Finally, choose a move from the available safe moves.
-    // TODO: Step 5 - Select a move to make based on strategy, rather than random.
-    let moves = possible_moves
+    // Are there any safe moves left?
+    let safe_moves = is_move_safe
         .into_iter()
         .filter(|&(_, v)| v)
         .map(|(k, _)| k)
         .collect::<Vec<_>>();
-    let chosen = moves.choose(&mut rand::thread_rng()).unwrap();
+    
+    // Choose a random move from the safe ones
+    let chosen = safe_moves.choose(&mut rand::thread_rng()).unwrap();
 
-    info!("{} MOVE {}", game.id, chosen);
+    // TODO: Step 4 - Move towards food instead of random, to regain health and survive longer
+    // let food = &board.food;
 
-    chosen
+    info!("MOVE {}: {}", turn, chosen);
+    return json!({ "move": chosen });
 }
