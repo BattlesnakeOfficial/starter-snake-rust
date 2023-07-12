@@ -6,7 +6,7 @@ use rocket::fairing::AdHoc;
 use rocket::http::Status;
 use rocket::serde::{json::Json, Deserialize};
 use serde::Serialize;
-use serde_json::{Value};
+use serde_json::Value;
 use std::collections::HashMap;
 use std::env;
 
@@ -43,7 +43,7 @@ pub struct Battlesnake {
     shout: Option<String>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, PartialEq)]
 pub struct Coord {
     x: u32,
     y: u32,
@@ -99,7 +99,7 @@ fn rocket() -> _ {
     // environment variable. However, Rocket looks at the `ROCKET_PORT` environment variable.
     // If we find a value for `PORT`, we set `ROCKET_PORT` to that value.
     if let Ok(port) = env::var("PORT") {
-        env::set_var("ROCKET_PORT", &port);
+        env::set_var("ROCKET_PORT", port);
     }
 
     // We default to 'info' level logging. But if the `RUST_LOG` environment variable is set,
@@ -115,7 +115,7 @@ fn rocket() -> _ {
     rocket::build()
         .attach(AdHoc::on_response("Server ID Middleware", |_, res| {
             Box::pin(async move {
-                res.set_raw_header("Server", "battlesnake/github/starter-snake-rust");
+                res.set_raw_header("Server", "ponchoalv/boa");
             })
         }))
         .mount(
