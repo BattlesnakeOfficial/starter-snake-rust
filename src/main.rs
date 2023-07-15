@@ -1,19 +1,29 @@
 #[macro_use]
 extern crate rocket;
 
+use std::collections::HashMap;
+use std::env;
+
 use log::info;
 use rocket::fairing::AdHoc;
 use rocket::http::Status;
 use rocket::serde::{json::Json, Deserialize};
 use serde::Serialize;
 use serde_json::Value;
-use std::collections::HashMap;
-use std::env;
 
 mod logic;
 
 // API and Response Objects
 // See https://docs.battlesnake.com/api
+
+#[derive(Deserialize, Serialize, Debug, Eq, PartialEq, Hash)]
+#[serde(rename_all = "snake_case")]
+pub enum Move {
+    Up,
+    Down,
+    Left,
+    Right,
+}
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Game {
@@ -31,7 +41,7 @@ pub struct Board {
     hazards: Vec<Coord>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, PartialEq)]
 pub struct Battlesnake {
     id: String,
     name: String,
@@ -43,7 +53,7 @@ pub struct Battlesnake {
     shout: Option<String>,
 }
 
-#[derive(Deserialize, Serialize, Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Clone, Copy)]
 pub struct Coord {
     x: u32,
     y: u32,
