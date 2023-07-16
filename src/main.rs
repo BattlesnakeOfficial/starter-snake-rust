@@ -16,7 +16,7 @@ mod logic;
 // API and Response Objects
 // See https://docs.battlesnake.com/api
 
-#[derive(Deserialize, Serialize, Debug, Eq, PartialEq, Hash)]
+#[derive(Deserialize, Serialize, Debug, Eq, PartialEq, Hash, Clone)]
 #[serde(rename_all = "snake_case")]
 pub enum Move {
     Up,
@@ -32,7 +32,7 @@ pub struct Game {
     timeout: u32,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Board {
     height: u32,
     width: u32,
@@ -41,7 +41,7 @@ pub struct Board {
     hazards: Vec<Coord>,
 }
 
-#[derive(Deserialize, Serialize, Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Clone)]
 pub struct Battlesnake {
     id: String,
     name: String,
@@ -115,7 +115,7 @@ fn rocket() -> _ {
     // We default to 'info' level logging. But if the `RUST_LOG` environment variable is set,
     // we keep that value instead.
     if env::var("RUST_LOG").is_err() {
-        env::set_var("RUST_LOG", "info");
+        env::set_var("RUST_LOG", "debug");
     }
 
     env_logger::init();

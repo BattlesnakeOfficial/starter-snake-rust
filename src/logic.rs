@@ -13,7 +13,7 @@
 use std::collections::HashMap;
 
 use log::info;
-use rand::seq::SliceRandom;
+use par_map::ParMap;
 use rocket::form::validate::Contains;
 use serde_json::{json, Value};
 
@@ -23,24 +23,57 @@ use crate::{Battlesnake, Board, Coord, Game, Move};
 // Valid moves are "up", "down", "left", or "right"
 // See https://docs.battlesnake.com/api/example-move for available data
 pub fn get_move(_game: &Game, turn: &u32, board: &Board, you: &Battlesnake) -> Value {
+    let board = board.clone();
+    let you = you.clone();
     let safe_moves = available_moves(&board, &you);
 
+    let scored_moves: HashMap<Move, i32> = safe_moves
+        .iter()
+        .cloned()
+        .par_map(move |mv| {
+            let moved_snake = move_snake(&board, you.clone(), &mv);
+            (mv, maximise(&board, moved_snake, 10))
+        })
+        .collect();
+
+    debug!("scored moves {:?}", scored_moves);
+
     // Choose a random move from the safe ones
-    let chosen = safe_moves.choose(&mut rand::thread_rng()).unwrap();
+    let chosen: (Option<Move>, i32) =
+        scored_moves
+            .into_iter()
+            .fold((None, i32::MIN), |(prev_mv, prev_score), (mv, score)| {
+                if prev_mv.is_none() || score > prev_score {
+                    (Some(mv), score)
+                } else {
+                    (prev_mv, prev_score)
+                }
+            });
 
     // TODO: Step 4 - Move towards food instead of random, to regain health and survive longer
     // let food = &board.food;
 
-    info!("MOVE {}: {:?}", turn, chosen);
-    json!({ "move": chosen })
+    match chosen {
+        (Some(mv), _) => {
+            info!("MOVE {}: {:?}", turn, mv);
+            json!({ "move": mv })
+        }
+        _ => {
+            info!("no move selected, going up");
+            json!({"move" : "up"})
+        }
+    }
 }
 
-#[allow(dead_code)]
-fn move_snake(board: &Board, snake: &Battlesnake, direction: &Move) -> Battlesnake {
+fn move_snake(board: &Board, snake: Battlesnake, direction: &Move) -> Battlesnake {
     let mut new_snake = Battlesnake {
         id: snake.id.clone(),
         name: snake.name.clone(),
-        health: snake.health - 1,
+        health: if snake.health == 0 {
+            0
+        } else {
+            snake.health - 1
+        },
         body: snake.body.clone(),
         head: snake.head,
         length: snake.length,
@@ -83,10 +116,14 @@ fn move_snake(board: &Board, snake: &Battlesnake, direction: &Move) -> Battlesna
         }
     }
 
-    if !board.food.contains(new_snake.head) {
-        new_snake.body.pop();
-    } else {
+    if board.food.contains(new_snake.head) {
+        new_snake.health = 100;
+    }
+
+    if snake.health == 100 {
         new_snake.length += 1;
+    } else {
+        new_snake.body.pop();
     }
 
     new_snake
@@ -113,13 +150,13 @@ fn available_moves(board: &Board, you: &Battlesnake) -> Vec<Move> {
         is_move_safe.insert(Move::Up, false);
     }
 
-    // TODO: Step 1 - Prevent your Battlesnake from moving out of bounds
+    // Step 1 - Prevent your Battlesnake from moving out of bounds
     set_moves_inbound(&mut is_move_safe, my_head, &board.width, &board.height);
 
-    // TODO: Step 2 - Prevent your Battlesnake from colliding with itself
+    // Step 2 - Prevent your Battlesnake from colliding with itself
     set_moves_collide_self(&mut is_move_safe, you);
 
-    // TODO: Step 3 - Prevent your Battlesnake from colliding with other Battlesnakes
+    // Step 3 - Prevent your Battlesnake from colliding with other Battlesnakes
     // let opponents = &board.snakes;
 
     // Are there any safe moves left?
@@ -149,10 +186,10 @@ pub fn info() -> Value {
 
     json!({
         "apiversion": "1",
-        "author": "ponchoalv", // TODO: Your Battlesnake Username
-        "color": "#888888", // TODO: Choose color
-        "head": "default", // TODO: Choose head
-        "tail": "default", // TODO: Choose tail
+        "author": "ponchoalv", // Your Battlesnake Username
+        "color": "#888888", // Choose color
+        "head": "default", // Choose head
+        "tail": "default", // Choose tail
     })
 }
 
@@ -172,19 +209,17 @@ fn set_moves_inbound(
     width: &u32,
     height: &u32,
 ) {
-    if head.x == width - 1 {
-        safe_moves.insert(Move::Right, false);
+    if head.y == height - 1 {
+        safe_moves.insert(Move::Up, false);
+    }
+    if head.y == 0 {
+        safe_moves.insert(Move::Down, false);
     }
     if head.x == 0 {
         safe_moves.insert(Move::Left, false);
     }
-
-    if head.y == height - 1 {
-        safe_moves.insert(Move::Up, false);
-    }
-
-    if head.y == 0 {
-        safe_moves.insert(Move::Down, false);
+    if head.x == width - 1 {
+        safe_moves.insert(Move::Right, false);
     }
 }
 
@@ -219,6 +254,41 @@ fn set_moves_collide_self(safe_moves: &mut HashMap<Move, bool>, you: &Battlesnak
     if you.body.contains(&head_moved_down) && you.body.last() != Some(&head_moved_down) {
         safe_moves.insert(Move::Down, false);
     }
+}
+
+fn score_position(board: &Board, you: &Battlesnake) -> i32 {
+    let food_value = 3;
+    let space_value = 2;
+    let mut score = 0;
+    let safe_moves = available_moves(board, you);
+    let will_eat = board.food.contains(you.head);
+
+    score += space_value * safe_moves.len() as i32;
+
+    if will_eat {
+        score += food_value;
+    }
+
+    if Some(&you.head) == you.body.last() || safe_moves.is_empty() || you.health == 0 {
+        score = i32::MIN;
+    }
+
+    score
+}
+
+fn maximise(board: &Board, you: Battlesnake, depth: u32) -> i32 {
+    let possible_moves = available_moves(board, &you);
+
+    if depth == 0 || possible_moves.is_empty() {
+        return score_position(board, &you);
+    }
+
+    let mut max_score = i32::MIN;
+    for mv in possible_moves {
+        let score = maximise(board, move_snake(board, you.clone(), &mv), depth - 1);
+        max_score = max_score.max(score);
+    }
+    max_score
 }
 
 // fn minimax(state: &Game, depth: i32, maximizing_player: bool) -> i32 {
@@ -417,7 +487,43 @@ mod tests_snake_moves {
             hazards: vec![],
         };
 
-        let new_snake = move_snake(&board, &you, &Move::Right);
+        let new_snake = move_snake(&board, you, &Move::Right);
+
+        assert_eq!(new_snake, expected)
+    }
+
+    #[test]
+    fn test_move_with_food_left() {
+        let you = test_get_battlesnake();
+
+        let expected = Battlesnake {
+            id: "you".to_string(),
+            name: "you".to_string(),
+            health: 99,
+            body: vec![
+                Coord { x: 0, y: 0 },
+                Coord { x: 1, y: 0 },
+                Coord { x: 1, y: 1 },
+                Coord { x: 1, y: 2 },
+                Coord { x: 2, y: 2 },
+                Coord { x: 2, y: 1 },
+                Coord { x: 2, y: 0 },
+            ],
+            head: Coord { x: 0, y: 0 },
+            length: 7,
+            latency: "100".to_string(),
+            shout: None,
+        };
+
+        let board = Board {
+            height: 11,
+            width: 11,
+            food: vec![Coord { x: 1, y: 0 }],
+            snakes: vec![test_get_battlesnake()],
+            hazards: vec![],
+        };
+
+        let new_snake = move_snake(&board, you, &Move::Left);
 
         assert_eq!(new_snake, expected)
     }
