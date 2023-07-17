@@ -27,7 +27,15 @@ pub fn get_move(_game: &Game, turn: &u32, board: &Board, you: &Battlesnake) -> V
     debug!("turn: {} - you: {:?}", turn, you);
 
     let board = board.clone();
-    let you = you.clone();
+    let mut you = you.clone();
+
+    if you.length > 3
+        && you.body[you.length as usize - 2] == you.body[you.length as usize - 1 as usize]
+    {
+        you.body.pop();
+        you.length = you.body.len() as u32;
+    }
+
     let safe_moves = available_moves(&board, &you);
 
     let scored_moves: HashMap<Move, i32> = safe_moves
@@ -36,7 +44,7 @@ pub fn get_move(_game: &Game, turn: &u32, board: &Board, you: &Battlesnake) -> V
         .map(move |mv| {
             let moved_snake = move_snake(&board, you.clone(), &mv);
             // debug!("ROOT move: {:?}", mv);
-            (mv, maximise(&board, moved_snake, 9))
+            (mv, maximise(&board, moved_snake, 8, i32::MIN))
         })
         .collect();
 
@@ -111,7 +119,7 @@ fn move_snake(board: &Board, snake: Battlesnake, direction: &Move) -> Battlesnak
         new_snake.health = 100;
     }
 
-    if snake.health == 99 {
+    if snake.health == 100 {
         new_snake.length += 1;
     } else {
         new_snake.body.pop();
@@ -150,6 +158,8 @@ fn available_moves(board: &Board, you: &Battlesnake) -> Vec<Move> {
 
     // Step 3 - Prevent your Battlesnake from colliding with other Battlesnakes
     // let opponents = &board.snakes;
+
+    set_moves_has_collided_with_tail(&mut is_move_safe, you);
 
     // Are there any safe moves left?
     is_move_safe
@@ -248,20 +258,29 @@ fn set_moves_collide_self(safe_moves: &mut HashMap<Move, bool>, you: &Battlesnak
     }
 }
 
-fn score_position(board: &Board, you: &Battlesnake) -> i32 {
+fn set_moves_has_collided_with_tail(safe_moves: &mut HashMap<Move, bool>, you: &Battlesnake) {
+    if you.body.last() == Some(&you.head) {
+        safe_moves.insert(Move::Up, false);
+        safe_moves.insert(Move::Down, false);
+        safe_moves.insert(Move::Left, false);
+        safe_moves.insert(Move::Right, false);
+    }
+}
+
+fn score_position(board: &Board, you: &Battlesnake, current_score: i32) -> i32 {
     let food_value = 3;
     let space_value = 2;
-    let mut score = 0;
+    let mut score = current_score;
     let safe_moves = available_moves(board, you);
     let will_eat = board.food.contains(you.head);
-    let health_threshold = 30; // Adjust this threshold based on your game rules
+    let health_threshold = 10; // Adjust this threshold based on your game rules
 
     score += space_value * safe_moves.len() as i32;
 
     if will_eat {
         if you.health <= health_threshold {
             score += food_value; // Add extra score for eating when health is low
-        } else {
+        } else if score > i32::MIN + food_value {
             score -= food_value; // Reduce the score for eating when health is high
         }
     }
@@ -273,18 +292,18 @@ fn score_position(board: &Board, you: &Battlesnake) -> i32 {
     score
 }
 
-fn maximise(board: &Board, you: Battlesnake, depth: u32) -> i32 {
+fn maximise(board: &Board, you: Battlesnake, depth: u32, current_score: i32) -> i32 {
     let possible_moves = available_moves(board, &you);
 
     if depth == 0 || possible_moves.is_empty() {
-        return score_position(board, &you);
+        return score_position(board, &you, current_score);
     }
 
     let mut max_score = i32::MIN;
     for mv in possible_moves {
         let moved_snake = move_snake(board, you.clone(), &mv); // Update the snake's position
-        let score = maximise(board, moved_snake, depth - 1); // Pass the updated snake to the recursive call
-                                                             // debug!("move: {:?}, score: {}, level: {}", mv, score, 10 - depth);
+        let score = maximise(board, moved_snake, depth - 1, current_score); // Pass the updated snake to the recursive call
+                                                                            // debug!("move: {:?}, score: {}, level: {}", mv, score, 10 - depth);
         max_score = max_score.max(score);
     }
     max_score
@@ -493,12 +512,12 @@ mod tests_snake_moves {
 
     #[test]
     fn test_move_with_food_left() {
-        let you = test_get_battlesnake_with_health(99);
+        let you = test_get_battlesnake_with_health(100);
 
         let expected = Battlesnake {
             id: "you".to_string(),
             name: "you".to_string(),
-            health: 98,
+            health: 99,
             body: vec![
                 Coord { x: 0, y: 0 },
                 Coord { x: 1, y: 0 },
@@ -518,12 +537,189 @@ mod tests_snake_moves {
             height: 11,
             width: 11,
             food: vec![Coord { x: 1, y: 0 }],
-            snakes: vec![test_get_battlesnake_with_health(98)],
+            snakes: vec![test_get_battlesnake_with_health(100)],
             hazards: vec![],
         };
 
         let new_snake = move_snake(&board, you, &Move::Left);
 
         assert_eq!(new_snake, expected)
+    }
+}
+
+#[cfg(test)]
+mod tests_maximise {
+    use super::*;
+
+    #[test]
+    fn test_double_tail() {
+        let board = Board {
+            height: 5,
+            width: 5,
+            food: vec![Coord { x: 0, y: 0 }, Coord { x: 2, y: 2 }],
+            snakes: vec![Battlesnake {
+                id: "4bcd1e18-c05c-43d6-98fa-2a6b5eea9a2a".to_owned(),
+                name: "Rust Starter Project".to_owned(),
+                health: 100,
+                body: vec![
+                    Coord { x: 1, y: 2 },
+                    Coord { x: 1, y: 1 },
+                    Coord { x: 1, y: 0 },
+                    Coord { x: 2, y: 0 },
+                    Coord { x: 2, y: 1 },
+                    Coord { x: 3, y: 1 },
+                    Coord { x: 3, y: 0 },
+                    Coord { x: 4, y: 0 },
+                    Coord { x: 4, y: 1 },
+                    Coord { x: 4, y: 2 },
+                    Coord { x: 3, y: 2 },
+                    Coord { x: 3, y: 3 },
+                    Coord { x: 4, y: 3 },
+                    Coord { x: 4, y: 4 },
+                    Coord { x: 3, y: 4 },
+                    Coord { x: 2, y: 4 },
+                    Coord { x: 2, y: 3 },
+                    Coord { x: 1, y: 3 },
+                    Coord { x: 1, y: 4 },
+                    Coord { x: 0, y: 4 },
+                    Coord { x: 0, y: 3 },
+                ],
+                head: Coord { x: 1, y: 2 },
+                length: 21,
+                latency: "3".to_owned(),
+                shout: None,
+            }],
+            hazards: vec![],
+        };
+
+        let you = Battlesnake {
+            id: "4bcd1e18-c05c-43d6-98fa-2a6b5eea9a2a".to_owned(),
+            name: "Rust Starter Project".to_owned(),
+            health: 100,
+            body: vec![
+                Coord { x: 1, y: 2 },
+                Coord { x: 1, y: 1 },
+                Coord { x: 1, y: 0 },
+                Coord { x: 2, y: 0 },
+                Coord { x: 2, y: 1 },
+                Coord { x: 3, y: 1 },
+                Coord { x: 3, y: 0 },
+                Coord { x: 4, y: 0 },
+                Coord { x: 4, y: 1 },
+                Coord { x: 4, y: 2 },
+                Coord { x: 3, y: 2 },
+                Coord { x: 3, y: 3 },
+                Coord { x: 4, y: 3 },
+                Coord { x: 4, y: 4 },
+                Coord { x: 3, y: 4 },
+                Coord { x: 2, y: 4 },
+                Coord { x: 2, y: 3 },
+                Coord { x: 1, y: 3 },
+                Coord { x: 1, y: 4 },
+                Coord { x: 0, y: 4 },
+                Coord { x: 0, y: 3 },
+            ],
+            head: Coord { x: 1, y: 2 },
+            length: 21,
+            latency: "3".to_owned(),
+            shout: None,
+        };
+
+        let left_moved_snake = move_snake(&board, you.clone(), &Move::Left);
+        println!("left_moved_snake {:?}", left_moved_snake);
+
+        let right_moved_snake = move_snake(&board, you, &Move::Right);
+        println!("right_moved_snake {:?}", right_moved_snake);
+
+        println!("maximise: {}", maximise(&board, left_moved_snake, 20));
+        println!("maximise: {}", maximise(&board, right_moved_snake, 20));
+    }
+
+    #[test]
+    fn test_shouldn_eat() {
+        let board = Board {
+            height: 5,
+            width: 5,
+            food: vec![
+                Coord { x: 0, y: 0 },
+                Coord { x: 0, y: 1 },
+                Coord { x: 3, y: 3 },
+            ],
+            snakes: vec![Battlesnake {
+                id: "5b08e492-e453-42c5-94c1-8e56277126c8".to_owned(),
+                name: "Rust Starter Project".to_owned(),
+                health: 64,
+                body: vec![
+                    Coord { x: 1, y: 1 },
+                    Coord { x: 1, y: 2 },
+                    Coord { x: 0, y: 2 },
+                    Coord { x: 0, y: 3 },
+                    Coord { x: 0, y: 4 },
+                    Coord { x: 1, y: 4 },
+                    Coord { x: 1, y: 3 },
+                    Coord { x: 2, y: 3 },
+                    Coord { x: 2, y: 4 },
+                    Coord { x: 3, y: 4 },
+                    Coord { x: 4, y: 4 },
+                    Coord { x: 4, y: 3 },
+                    Coord { x: 4, y: 2 },
+                    Coord { x: 4, y: 1 },
+                    Coord { x: 4, y: 0 },
+                    Coord { x: 3, y: 0 },
+                    Coord { x: 3, y: 1 },
+                    Coord { x: 3, y: 2 },
+                    Coord { x: 2, y: 2 },
+                    Coord { x: 2, y: 1 },
+                    Coord { x: 2, y: 0 },
+                ],
+                head: Coord { x: 1, y: 1 },
+                length: 21,
+                latency: "5".to_owned(),
+                shout: None,
+            }],
+            hazards: vec![],
+        };
+
+        let you = Battlesnake {
+            id: "5b08e492-e453-42c5-94c1-8e56277126c8".to_owned(),
+            name: "Rust Starter Project".to_owned(),
+            health: 64,
+            body: vec![
+                Coord { x: 1, y: 1 },
+                Coord { x: 1, y: 2 },
+                Coord { x: 0, y: 2 },
+                Coord { x: 0, y: 3 },
+                Coord { x: 0, y: 4 },
+                Coord { x: 1, y: 4 },
+                Coord { x: 1, y: 3 },
+                Coord { x: 2, y: 3 },
+                Coord { x: 2, y: 4 },
+                Coord { x: 3, y: 4 },
+                Coord { x: 4, y: 4 },
+                Coord { x: 4, y: 3 },
+                Coord { x: 4, y: 2 },
+                Coord { x: 4, y: 1 },
+                Coord { x: 4, y: 0 },
+                Coord { x: 3, y: 0 },
+                Coord { x: 3, y: 1 },
+                Coord { x: 3, y: 2 },
+                Coord { x: 2, y: 2 },
+                Coord { x: 2, y: 1 },
+                Coord { x: 2, y: 0 },
+            ],
+            head: Coord { x: 1, y: 1 },
+            length: 21,
+            latency: "5".to_owned(),
+            shout: None,
+        };
+
+        println!(
+            "score for move_left {}",
+            maximise(&board, move_snake(&board, you.clone(), &Move::Left), 20)
+        );
+        println!(
+            "score for move_down {}",
+            maximise(&board, move_snake(&board, you, &Move::Down), 20)
+        );
     }
 }
