@@ -13,7 +13,7 @@
 use std::collections::HashMap;
 
 use log::info;
-use par_map::ParMap;
+// use par_map::ParMap;
 use rocket::form::validate::Contains;
 use serde_json::{json, Value};
 
@@ -23,6 +23,9 @@ use crate::{Battlesnake, Board, Coord, Game, Move};
 // Valid moves are "up", "down", "left", or "right"
 // See https://docs.battlesnake.com/api/example-move for available data
 pub fn get_move(_game: &Game, turn: &u32, board: &Board, you: &Battlesnake) -> Value {
+    debug!("turn: {} - board: {:?}", turn, board);
+    debug!("turn: {} - you: {:?}", turn, you);
+
     let board = board.clone();
     let you = you.clone();
     let safe_moves = available_moves(&board, &you);
@@ -30,9 +33,10 @@ pub fn get_move(_game: &Game, turn: &u32, board: &Board, you: &Battlesnake) -> V
     let scored_moves: HashMap<Move, i32> = safe_moves
         .iter()
         .cloned()
-        .par_map(move |mv| {
+        .map(move |mv| {
             let moved_snake = move_snake(&board, you.clone(), &mv);
-            (mv, maximise(&board, moved_snake, 10))
+            // debug!("ROOT move: {:?}", mv);
+            (mv, maximise(&board, moved_snake, 9))
         })
         .collect();
 
@@ -81,51 +85,39 @@ fn move_snake(board: &Board, snake: Battlesnake, direction: &Move) -> Battlesnak
         shout: None,
     };
 
-    match direction {
-        Move::Up => {
-            let new_head = Coord {
-                x: snake.head.x,
-                y: snake.head.y + 1,
-            };
-            new_snake.head = new_head;
-            new_snake.body.insert(0, new_head);
-        }
-        Move::Down => {
-            let new_head = Coord {
-                x: snake.head.x,
-                y: snake.head.y - 1,
-            };
-            new_snake.head = new_head;
-            new_snake.body.insert(0, new_head);
-        }
-        Move::Left => {
-            let new_head = Coord {
-                x: snake.head.x - 1,
-                y: snake.head.y,
-            };
-            new_snake.head = new_head;
-            new_snake.body.insert(0, new_head);
-        }
-        Move::Right => {
-            let new_head = Coord {
-                x: snake.head.x + 1,
-                y: snake.head.y,
-            };
-            new_snake.head = new_head;
-            new_snake.body.insert(0, new_head);
-        }
-    }
+    let new_head = match direction {
+        Move::Up => Coord {
+            x: snake.head.x,
+            y: snake.head.y + 1,
+        },
+        Move::Down => Coord {
+            x: snake.head.x,
+            y: snake.head.y - 1,
+        },
+        Move::Left => Coord {
+            x: snake.head.x - 1,
+            y: snake.head.y,
+        },
+        Move::Right => Coord {
+            x: snake.head.x + 1,
+            y: snake.head.y,
+        },
+    };
 
-    if board.food.contains(new_snake.head) {
+    new_snake.head = new_head;
+    new_snake.body.insert(0, new_head);
+
+    if board.food.contains(&new_snake.head) {
         new_snake.health = 100;
     }
 
-    if snake.health == 100 {
+    if snake.health == 99 {
         new_snake.length += 1;
     } else {
         new_snake.body.pop();
     }
 
+    // debug!("moved {:?}: new moved snake {:?}", direction, new_snake);
     new_snake
 }
 
@@ -262,11 +254,16 @@ fn score_position(board: &Board, you: &Battlesnake) -> i32 {
     let mut score = 0;
     let safe_moves = available_moves(board, you);
     let will_eat = board.food.contains(you.head);
+    let health_threshold = 30; // Adjust this threshold based on your game rules
 
     score += space_value * safe_moves.len() as i32;
 
     if will_eat {
-        score += food_value;
+        if you.health <= health_threshold {
+            score += food_value; // Add extra score for eating when health is low
+        } else {
+            score -= food_value; // Reduce the score for eating when health is high
+        }
     }
 
     if Some(&you.head) == you.body.last() || safe_moves.is_empty() || you.health == 0 {
@@ -285,7 +282,9 @@ fn maximise(board: &Board, you: Battlesnake, depth: u32) -> i32 {
 
     let mut max_score = i32::MIN;
     for mv in possible_moves {
-        let score = maximise(board, move_snake(board, you.clone(), &mv), depth - 1);
+        let moved_snake = move_snake(board, you.clone(), &mv); // Update the snake's position
+        let score = maximise(board, moved_snake, depth - 1); // Pass the updated snake to the recursive call
+                                                             // debug!("move: {:?}, score: {}, level: {}", mv, score, 10 - depth);
         max_score = max_score.max(score);
     }
     max_score
@@ -318,11 +317,11 @@ fn maximise(board: &Board, you: Battlesnake, depth: u32) -> i32 {
 mod test_helpers {
     use crate::{Battlesnake, Coord};
 
-    pub fn test_get_battlesnake() -> Battlesnake {
+    pub fn test_get_battlesnake_with_health(health: u32) -> Battlesnake {
         Battlesnake {
             id: "you".to_string(),
             name: "you".to_string(),
-            health: 100,
+            health,
             body: vec![
                 Coord { x: 1, y: 0 },
                 Coord { x: 1, y: 1 },
@@ -426,13 +425,13 @@ mod tests_boundaries {
 
 #[cfg(test)]
 mod tests_self_collitions {
-    use crate::logic::test_helpers::test_get_battlesnake;
+    use crate::logic::test_helpers::test_get_battlesnake_with_health;
 
     use super::*;
 
     #[test]
     fn test_no_collide_with_tail() {
-        let you = test_get_battlesnake();
+        let you = test_get_battlesnake_with_health(40);
 
         let mut is_move_safe = get_initial_moves();
 
@@ -453,18 +452,18 @@ mod tests_self_collitions {
 
 #[cfg(test)]
 mod tests_snake_moves {
-    use crate::logic::test_helpers::test_get_battlesnake;
+    use crate::logic::test_helpers::test_get_battlesnake_with_health;
 
     use super::*;
 
     #[test]
     fn test_move_no_food_right() {
-        let you = test_get_battlesnake();
+        let you = test_get_battlesnake_with_health(40);
 
         let expected = Battlesnake {
             id: "you".to_string(),
             name: "you".to_string(),
-            health: 99,
+            health: 39,
             body: vec![
                 Coord { x: 2, y: 0 },
                 Coord { x: 1, y: 0 },
@@ -483,7 +482,7 @@ mod tests_snake_moves {
             height: 11,
             width: 11,
             food: vec![],
-            snakes: vec![test_get_battlesnake()],
+            snakes: vec![test_get_battlesnake_with_health(40)],
             hazards: vec![],
         };
 
@@ -494,12 +493,12 @@ mod tests_snake_moves {
 
     #[test]
     fn test_move_with_food_left() {
-        let you = test_get_battlesnake();
+        let you = test_get_battlesnake_with_health(99);
 
         let expected = Battlesnake {
             id: "you".to_string(),
             name: "you".to_string(),
-            health: 99,
+            health: 98,
             body: vec![
                 Coord { x: 0, y: 0 },
                 Coord { x: 1, y: 0 },
@@ -519,7 +518,7 @@ mod tests_snake_moves {
             height: 11,
             width: 11,
             food: vec![Coord { x: 1, y: 0 }],
-            snakes: vec![test_get_battlesnake()],
+            snakes: vec![test_get_battlesnake_with_health(98)],
             hazards: vec![],
         };
 
