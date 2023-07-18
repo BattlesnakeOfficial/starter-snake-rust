@@ -308,44 +308,43 @@ fn maximise(board: &Board, you: Battlesnake, depth: u32) -> i32 {
     max_score
 }
 
+// use rayon::prelude::*;
+
 // fn minimax(board: &Board, you: Battlesnake, depth: u32, maximizing_player: bool) -> i32 {
 //     let possible_moves = available_moves(board, &you);
-//
+
 //     if depth == 0 || possible_moves.is_empty() || score_position(board, &you) == i32::MIN {
 //         return score_position(board, &you);
 //     }
-//
+
 //     if maximizing_player {
-//         // Maximize
-//         let mut max_score = i32::MIN;
-//         for mv in possible_moves {
-//             let moved_snake = move_snake(board, you.clone(), &mv);
-//             let score = minimax(board, moved_snake, depth - 1, false);
-//             max_score = max_score.max(score);
-//         }
-//         max_score
+//         // Maximize using parallel processing
+//         possible_moves
+//             .into_par_iter()
+//             .map(|mv| {
+//                 let moved_snake = move_snake(board, you.clone(), &mv);
+//                 minimax(board, moved_snake, depth - 1, false)
+//             })
+//             .max()
+//             .unwrap_or(i32::MIN)
 //     } else {
-//         // Minimize for each opponent snake in parallel
-//         let mut min_score = i32::MAX;
-//         let mut handles = vec![];
-//         for opponent_snake in &board.snakes {
-//             if opponent_snake.id != you.id {
-//                 for opponent_move in available_moves(board, opponent_snake) {
-//                     let board_clone = board.clone();
-//                     let opponent_snake_clone = opponent_snake.clone();
-//                     let handle = thread::spawn(move || {
-//                         let moved_opponent_snake = move_snake(&board_clone, opponent_snake_clone, &opponent_move);
-//                         minimax(&board_clone, moved_opponent_snake, depth - 1, true)
-//                     });
-//                     handles.push(handle);
-//                 }
-//             }
-//         }
-//         for handle in handles {
-//             let score = handle.join().unwrap();
-//             min_score = min_score.min(score);
-//         }
-//         min_score
+//         // Minimize for each opponent snake using parallel processing
+//         board
+//             .snakes
+//             .par_iter()
+//             .filter(|opponent_snake| opponent_snake.id != you.id)
+//             .flat_map(|opponent_snake| {
+//                 available_moves(board, opponent_snake)
+//                     .into_par_iter()
+//                     .map(move |opponent_move| {
+//                         let moved_opponent_snake = move_snake(board, opponent_snake.clone(), &opponent_move);
+//                         -1 * minimax(board, moved_opponent_snake, depth - 1, true)
+//                     })
+//                     .min()
+//                     .unwrap_or(i32::MAX)
+//             })
+//             .max()
+//             .unwrap_or(i32::MIN)
 //     }
 // }
 
