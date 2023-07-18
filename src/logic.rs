@@ -257,15 +257,6 @@ fn set_moves_collide_self(safe_moves: &mut HashMap<Move, bool>, you: &Battlesnak
     }
 }
 
-fn set_moves_has_collided_with_tail(safe_moves: &mut HashMap<Move, bool>, you: &Battlesnake) {
-    if you.body.last() == Some(&you.head) {
-        safe_moves.insert(Move::Up, false);
-        safe_moves.insert(Move::Down, false);
-        safe_moves.insert(Move::Left, false);
-        safe_moves.insert(Move::Right, false);
-    }
-}
-
 fn score_position(board: &Board, you: &Battlesnake) -> i32 {
     let food_value = 3;
     let space_value = 2;
