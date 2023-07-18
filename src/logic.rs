@@ -13,7 +13,7 @@
 use std::collections::HashMap;
 
 use log::info;
-// use par_map::ParMap;
+use par_map::ParMap;
 use rocket::form::validate::Contains;
 use serde_json::{json, Value};
 
@@ -29,8 +29,7 @@ pub fn get_move(_game: &Game, turn: &u32, board: &Board, you: &Battlesnake) -> V
     let board = board.clone();
     let mut you = you.clone();
 
-    if you.length > 3
-        && you.body[you.length as usize - 2] == you.body[you.length as usize - 1 as usize]
+    if you.length > 2 && you.body[you.length as usize - 2] == you.body[you.length as usize - 1usize]
     {
         you.body.pop();
         you.length = you.body.len() as u32;
@@ -41,10 +40,10 @@ pub fn get_move(_game: &Game, turn: &u32, board: &Board, you: &Battlesnake) -> V
     let scored_moves: HashMap<Move, i32> = safe_moves
         .iter()
         .cloned()
-        .map(move |mv| {
+        .par_map(move |mv| {
             let moved_snake = move_snake(&board, you.clone(), &mv);
             // debug!("ROOT move: {:?}", mv);
-            (mv, maximise(&board, moved_snake, 8, i32::MIN))
+            (mv, maximise(&board, moved_snake, 8))
         })
         .collect();
 
@@ -159,7 +158,7 @@ fn available_moves(board: &Board, you: &Battlesnake) -> Vec<Move> {
     // Step 3 - Prevent your Battlesnake from colliding with other Battlesnakes
     // let opponents = &board.snakes;
 
-    set_moves_has_collided_with_tail(&mut is_move_safe, you);
+    // set_moves_has_collided_with_tail(&mut is_move_safe, you);
 
     // Are there any safe moves left?
     is_move_safe
@@ -267,10 +266,10 @@ fn set_moves_has_collided_with_tail(safe_moves: &mut HashMap<Move, bool>, you: &
     }
 }
 
-fn score_position(board: &Board, you: &Battlesnake, current_score: i32) -> i32 {
+fn score_position(board: &Board, you: &Battlesnake) -> i32 {
     let food_value = 3;
     let space_value = 2;
-    let mut score = current_score;
+    let mut score = 0;
     let safe_moves = available_moves(board, you);
     let will_eat = board.food.contains(you.head);
     let health_threshold = 10; // Adjust this threshold based on your game rules
@@ -292,40 +291,58 @@ fn score_position(board: &Board, you: &Battlesnake, current_score: i32) -> i32 {
     score
 }
 
-fn maximise(board: &Board, you: Battlesnake, depth: u32, current_score: i32) -> i32 {
+fn maximise(board: &Board, you: Battlesnake, depth: u32) -> i32 {
     let possible_moves = available_moves(board, &you);
 
-    if depth == 0 || possible_moves.is_empty() {
-        return score_position(board, &you, current_score);
+    if depth == 0 || possible_moves.is_empty() || score_position(board, &you) == i32::MIN {
+        return score_position(board, &you);
     }
 
     let mut max_score = i32::MIN;
     for mv in possible_moves {
         let moved_snake = move_snake(board, you.clone(), &mv); // Update the snake's position
-        let score = maximise(board, moved_snake, depth - 1, current_score); // Pass the updated snake to the recursive call
-                                                                            // debug!("move: {:?}, score: {}, level: {}", mv, score, 10 - depth);
+        let score = maximise(board, moved_snake, depth - 1); // Pass the updated snake to the recursive call
+                                                             // debug!("move: {:?}, score: {}, level: {}", mv, score, 10 - depth);
         max_score = max_score.max(score);
     }
     max_score
 }
 
-// fn minimax(state: &Game, depth: i32, maximizing_player: bool) -> i32 {
-//     if depth == 0 || state.is_game_over() {
-//         // Base case: evaluate the current state
-//         return evaluate_state(state);
+// fn minimax(board: &Board, you: Battlesnake, depth: u32, maximizing_player: bool) -> i32 {
+//     let possible_moves = available_moves(board, &you);
+//
+//     if depth == 0 || possible_moves.is_empty() || score_position(board, &you) == i32::MIN {
+//         return score_position(board, &you);
 //     }
 //
 //     if maximizing_player {
+//         // Maximize
 //         let mut max_score = i32::MIN;
-//         for mv in state.available_moves() {
-//             let score = minimax(&state, depth - 1, false);
+//         for mv in possible_moves {
+//             let moved_snake = move_snake(board, you.clone(), &mv);
+//             let score = minimax(board, moved_snake, depth - 1, false);
 //             max_score = max_score.max(score);
 //         }
 //         max_score
 //     } else {
+//         // Minimize for each opponent snake in parallel
 //         let mut min_score = i32::MAX;
-//         for mv in state.available_moves() {
-//             let score = minimax(&state, depth - 1, true);
+//         let mut handles = vec![];
+//         for opponent_snake in &board.snakes {
+//             if opponent_snake.id != you.id {
+//                 for opponent_move in available_moves(board, opponent_snake) {
+//                     let board_clone = board.clone();
+//                     let opponent_snake_clone = opponent_snake.clone();
+//                     let handle = thread::spawn(move || {
+//                         let moved_opponent_snake = move_snake(&board_clone, opponent_snake_clone, &opponent_move);
+//                         minimax(&board_clone, moved_opponent_snake, depth - 1, true)
+//                     });
+//                     handles.push(handle);
+//                 }
+//             }
+//         }
+//         for handle in handles {
+//             let score = handle.join().unwrap();
 //             min_score = min_score.min(score);
 //         }
 //         min_score
@@ -631,8 +648,8 @@ mod tests_maximise {
         let right_moved_snake = move_snake(&board, you, &Move::Right);
         println!("right_moved_snake {:?}", right_moved_snake);
 
-        println!("maximise: {}", maximise(&board, left_moved_snake, 20));
-        println!("maximise: {}", maximise(&board, right_moved_snake, 20));
+        println!("maximise_left: {}", maximise(&board, left_moved_snake, 3));
+        println!("maximise_right: {}", maximise(&board, right_moved_snake, 3));
     }
 
     #[test]
