@@ -11,6 +11,8 @@
 // For more info see docs.battlesnake.com
 
 use std::collections::HashMap;
+use std::collections::VecDeque;
+use std::time::Instant;
 
 use log::info;
 use par_map::ParMap;
@@ -19,15 +21,25 @@ use serde_json::{json, Value};
 
 use crate::{Battlesnake, Board, Coord, Game, Move};
 
+#[derive(Debug)]
+struct MinimaxNode {
+    you: Battlesnake,
+    turn: u32,
+}
+
 // move is called on every turn and returns your next move
 // Valid moves are "up", "down", "left", or "right"
 // See https://docs.battlesnake.com/api/example-move for available data
-pub fn get_move(_game: &Game, turn: &u32, board: &Board, you: &Battlesnake) -> Value {
+pub fn get_move(game: &Game, turn: &u32, board: &Board, you: &Battlesnake) -> Value {
+    let start_time = Instant::now();
+
+    debug!("turn: {} - Game: {:?}", turn, game);
     debug!("turn: {} - board: {:?}", turn, board);
     debug!("turn: {} - you: {:?}", turn, you);
 
     let board = board.clone();
     let mut you = you.clone();
+    let timeout = game.timeout as u128;
 
     if you.length > 2 && you.body[you.length as usize - 2] == you.body[you.length as usize - 1usize]
     {
@@ -41,9 +53,12 @@ pub fn get_move(_game: &Game, turn: &u32, board: &Board, you: &Battlesnake) -> V
         .iter()
         .cloned()
         .par_map(move |mv| {
-            let moved_snake = move_snake(&board, you.clone(), &mv);
+            let moved_snake = move_snake(&board, &you, &mv);
             // debug!("ROOT move: {:?}", mv);
-            (mv, maximise(&board, moved_snake, 8))
+            (
+                mv,
+                maximise(&board, &moved_snake, &start_time, timeout - 50),
+            )
         })
         .collect();
 
@@ -76,7 +91,7 @@ pub fn get_move(_game: &Game, turn: &u32, board: &Board, you: &Battlesnake) -> V
     }
 }
 
-fn move_snake(board: &Board, snake: Battlesnake, direction: &Move) -> Battlesnake {
+fn move_snake(board: &Board, snake: &Battlesnake, direction: &Move) -> Battlesnake {
     let mut new_snake = Battlesnake {
         id: snake.id.clone(),
         name: snake.name.clone(),
@@ -258,22 +273,28 @@ fn set_moves_collide_self(safe_moves: &mut HashMap<Move, bool>, you: &Battlesnak
 }
 
 fn score_position(board: &Board, you: &Battlesnake) -> i32 {
-    let food_value = 3;
+    let food_value = 1;
     let space_value = 2;
     let mut score = 0;
     let safe_moves = available_moves(board, you);
     let will_eat = board.food.contains(you.head);
-    let health_threshold = 10; // Adjust this threshold based on your game rules
+    let health_threshold = 30; // Adjust this threshold based on your game rules
 
     score += space_value * safe_moves.len() as i32;
 
-    if will_eat {
-        if you.health <= health_threshold {
-            score += food_value; // Add extra score for eating when health is low
-        } else if score > i32::MIN + food_value {
-            score -= food_value; // Reduce the score for eating when health is high
+    if will_eat && you.health <= health_threshold {
+        score += food_value; // Add extra score for eating when health is low
+    } else if will_eat {
+        score -= if score + food_value > i32::MIN {
+            food_value
+        } else {
+            0
         }
     }
+
+    // if you.health > health_threshold && you.health < health_threshold + 10 {
+    //     score += 20;
+    // }
 
     if Some(&you.head) == you.body.last() || safe_moves.is_empty() || you.health == 0 {
         score = i32::MIN;
@@ -282,22 +303,70 @@ fn score_position(board: &Board, you: &Battlesnake) -> i32 {
     score
 }
 
-fn maximise(board: &Board, you: Battlesnake, depth: u32) -> i32 {
-    let possible_moves = available_moves(board, &you);
+fn maximise(board: &Board, you: &Battlesnake, start_date: &Instant, max_duration: u128) -> i32 {
+    let possible_moves = available_moves(board, you);
+    let mut max_score = score_position(board, you);
 
-    if depth == 0 || possible_moves.is_empty() || score_position(board, &you) == i32::MIN {
-        return score_position(board, &you);
+    if possible_moves.is_empty() || max_score == i32::MIN {
+        return max_score;
     }
 
-    let mut max_score = i32::MIN;
+    let mut stack: VecDeque<MinimaxNode> = VecDeque::new();
     for mv in possible_moves {
-        let moved_snake = move_snake(board, you.clone(), &mv); // Update the snake's position
-        let score = maximise(board, moved_snake, depth - 1); // Pass the updated snake to the recursive call
-                                                             // debug!("move: {:?}, score: {}, level: {}", mv, score, 10 - depth);
-        max_score = max_score.max(score);
+        stack.push_back(MinimaxNode {
+            you: move_snake(board, you, &mv),
+            turn: 1,
+        });
     }
+
+    let mut duration = start_date.elapsed().as_millis();
+
+    while duration <= max_duration && !stack.is_empty() {
+        // debug!("queued events {:?}", stack);
+        let node = stack.pop_front().unwrap();
+        let score = score_position(board, &node.you);
+        max_score = max_score.max(score + node.turn as i32);
+
+        if score != i32::MIN {
+            for mv in available_moves(board, &node.you) {
+                let moved_snake = move_snake(board, &node.you, &mv);
+                stack.push_back(MinimaxNode {
+                    you: moved_snake,
+                    turn: node.turn + 1,
+                });
+            }
+        }
+        duration = start_date.elapsed().as_millis();
+    }
+
     max_score
 }
+
+// fn maximise(board: &Board, you: &Battlesnake, start_date: &Instant, max_duration: u128, turn: u32) -> i32 {
+//     let possible_moves = available_moves(board, you);
+//
+//     if possible_moves.is_empty() || score_position(board, you) == i32::MIN || start_date.elapsed().as_millis() >= max_duration {
+//         return score_position(board, you) + turn as i32;
+//     }
+//
+//     // let mut max_score = i32::MIN;
+//     // for mv in possible_moves {
+//     //     let moved_snake = move_snake(board, you.clone(), &mv); // Update the snake's position
+//     //     let score = maximise(board, moved_snake, start_date, max_duration, turn + 1); // Pass the updated snake to the recursive call
+//     //     // debug!("move: {:?}, score: {}, level: {}", mv, score, 10 - depth);
+//     //     max_score = max_score.max(score);
+//     // }
+//     // max_score
+//
+//     possible_moves
+//         .iter()
+//         .map(|mv| {
+//             let moved_snake = move_snake(board, you, &mv);
+//             maximise(board, &moved_snake, start_date, max_duration, turn + 1)
+//         })
+//         .max()
+//         .unwrap_or(i32::MIN)
+// }
 
 // use rayon::prelude::*;
 
@@ -512,7 +581,7 @@ mod tests_snake_moves {
             hazards: vec![],
         };
 
-        let new_snake = move_snake(&board, you, &Move::Right);
+        let new_snake = move_snake(&board, &you, &Move::Right);
 
         assert_eq!(new_snake, expected)
     }
@@ -548,7 +617,7 @@ mod tests_snake_moves {
             hazards: vec![],
         };
 
-        let new_snake = move_snake(&board, you, &Move::Left);
+        let new_snake = move_snake(&board, &you, &Move::Left);
 
         assert_eq!(new_snake, expected)
     }
@@ -632,14 +701,21 @@ mod tests_maximise {
             shout: None,
         };
 
-        let left_moved_snake = move_snake(&board, you.clone(), &Move::Left);
+        let start = Instant::now();
+        let left_moved_snake = move_snake(&board, &you.clone(), &Move::Left);
         println!("left_moved_snake {:?}", left_moved_snake);
 
-        let right_moved_snake = move_snake(&board, you, &Move::Right);
+        let right_moved_snake = move_snake(&board, &you, &Move::Right);
         println!("right_moved_snake {:?}", right_moved_snake);
 
-        println!("maximise_left: {}", maximise(&board, left_moved_snake, 3));
-        println!("maximise_right: {}", maximise(&board, right_moved_snake, 3));
+        println!(
+            "maximise_left: {}",
+            maximise(&board, &left_moved_snake, &start, 40)
+        );
+        println!(
+            "maximise_right: {}",
+            maximise(&board, &right_moved_snake, &start, 40)
+        );
     }
 
     #[test]
@@ -720,13 +796,24 @@ mod tests_maximise {
             shout: None,
         };
 
+        let start_time = Instant::now();
         println!(
             "score for move_left {}",
-            maximise(&board, move_snake(&board, you.clone(), &Move::Left), 20)
+            maximise(
+                &board,
+                &move_snake(&board, &you.clone(), &Move::Left),
+                &start_time,
+                500
+            )
         );
         println!(
             "score for move_down {}",
-            maximise(&board, move_snake(&board, you, &Move::Down), 20)
+            maximise(
+                &board,
+                &move_snake(&board, &you, &Move::Down),
+                &start_time,
+                500
+            )
         );
     }
 }
