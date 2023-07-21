@@ -48,7 +48,6 @@ pub fn get_move(game: &Game, turn: &u32, board: &Board, you: &Battlesnake) -> Va
     }
 
     let safe_moves = available_moves(&board, &you);
-
     let scored_moves: HashMap<Move, i32> = safe_moves
         .iter()
         .cloned()
@@ -57,7 +56,7 @@ pub fn get_move(game: &Game, turn: &u32, board: &Board, you: &Battlesnake) -> Va
             // debug!("ROOT move: {:?}", mv);
             (
                 mv,
-                maximise(&board, &moved_snake, &start_time, timeout - 50),
+                maximise(&board, &moved_snake, &start_time, timeout - 30),
             )
         })
         .collect();
@@ -278,7 +277,8 @@ fn score_position(board: &Board, you: &Battlesnake) -> i32 {
     let mut score = 0;
     let safe_moves = available_moves(board, you);
     let will_eat = board.food.contains(you.head);
-    let health_threshold = 30; // Adjust this threshold based on your game rules
+    let health_threshold = 5; // Adjust this threshold based on your game rules
+    let killing_ratio = 20;
 
     score += space_value * safe_moves.len() as i32;
 
@@ -289,6 +289,20 @@ fn score_position(board: &Board, you: &Battlesnake) -> i32 {
             food_value
         } else {
             0
+        }
+    }
+
+    // check head collisions
+    for snake in &board.snakes {
+        if snake.id != you.id {
+            if snake.head == you.head && you.length > snake.length {
+                score += killing_ratio
+            } else if snake.head == you.head && you.length > snake.length && board.snakes.len() == 2
+            {
+                score = i32::MAX;
+            } else if snake.head == you.head && you.length < snake.length {
+                score -= killing_ratio;
+            }
         }
     }
 
@@ -323,7 +337,7 @@ fn maximise(board: &Board, you: &Battlesnake, start_date: &Instant, max_duration
 
     while duration <= max_duration && !stack.is_empty() {
         // debug!("queued events {:?}", stack);
-        let node = stack.pop_front().unwrap();
+        let node = stack.pop_back().unwrap();
         let score = score_position(board, &node.you);
         max_score = max_score.max(score + node.turn as i32);
 
@@ -803,7 +817,7 @@ mod tests_maximise {
                 &board,
                 &move_snake(&board, &you.clone(), &Move::Left),
                 &start_time,
-                500
+                500,
             )
         );
         println!(
@@ -812,7 +826,7 @@ mod tests_maximise {
                 &board,
                 &move_snake(&board, &you, &Move::Down),
                 &start_time,
-                500
+                500,
             )
         );
     }
