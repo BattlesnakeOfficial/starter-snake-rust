@@ -31,7 +31,5 @@ jobs:
           source .bashrc
           cd /home/ubuntu/desarrollo/boa
           git pull origin main
-          git status
-          /bin/bash
-          killall boa || echo "Boa was not running"
-          cargo run --release
+          cargo build --release
+          sudo systemctl restart boa

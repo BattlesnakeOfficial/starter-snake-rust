@@ -2,3 +2,9 @@
 address = "0.0.0.0"
 port = 8000
 keep_alive = 1
+
+[production]
+address = "0.0.0.0"
+port = 8000
+keep_alive = 5
+log = "normal"
