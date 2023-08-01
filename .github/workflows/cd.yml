@@ -25,7 +25,11 @@ jobs:
         key: ${{ secrets.PRIVATE_KEY }}
         port: 22
         script: |
-          cd ~/desarrollo/boa
+          /bin/bash
+          cd /home/ubuntu
+          source .profile
+          source .bashrc
+          cd /home/ubuntu/desarrollo/boa
           git pull origin main
           git status
           /bin/bash
