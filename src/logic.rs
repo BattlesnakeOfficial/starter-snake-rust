@@ -1,13 +1,12 @@
 // Welcome to
-// __________         __    __  .__                               __
-// \______   \_____ _/  |__/  |_|  |   ____   ______ ____ _____  |  | __ ____
-//  |    |  _/\__  \\   __\   __\  | _/ __ \ /  ___//    \\__  \ |  |/ // __ \
-//  |    |   \ / __ \|  |  |  | |  |_\  ___/ \___ \|   |  \/ __ \|    <\  ___/
-//  |________/(______/__|  |__| |____/\_____>______>___|__(______/__|__\\_____>
 //
-// This file can be a nice home for your Battlesnake logic and helper functions.
+//             ____                ____              _
+//            | __ )  ___   __ _  / ___| _ __   __ _| | _____
+//            |  _ \ / _ \ / _` | \___ \| '_ \ / _` | |/ / _ \
+//            | |_) | (_) | (_| |  ___) | | | | (_| |   <  __/
+//            |____/ \___/ \__,_| |____/|_| |_|\__,_|_|\_\___|
 //
-// To get you started we've included code to prevent your Battlesnake from moving backwards.
+//
 // For more info see docs.battlesnake.com
 
 use std::collections::HashMap;
@@ -21,7 +20,7 @@ use serde_json::{json, Value};
 
 use crate::{Battlesnake, Board, Coord, Game, Move};
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 struct MinimaxNode {
     you: Battlesnake,
     turn: u32,
@@ -56,7 +55,7 @@ pub fn get_move(game: &Game, turn: &u32, board: &Board, you: &Battlesnake) -> Va
             // debug!("ROOT move: {:?}", mv);
             (
                 mv,
-                maximise(&board, &moved_snake, &start_time, timeout - 40),
+                maximise(&board, &moved_snake, &start_time, timeout - 160),
             )
         })
         .collect();
@@ -300,9 +299,10 @@ fn score_position(board: &Board, you: &Battlesnake) -> i32 {
             } else if snake.head == you.head && you.length > snake.length && board.snakes.len() == 2
             {
                 score = i32::MAX;
-            } else if snake.body.contains(you.head) {
-                score -= killing_ratio;
             }
+            // else if snake.body.contains(you.head) {
+            //     score -= killing_ratio;
+            // }
         }
     }
 
