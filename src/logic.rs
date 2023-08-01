@@ -21,7 +21,7 @@ use serde_json::{json, Value};
 
 use crate::{Battlesnake, Board, Coord, Game, Move};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct MinimaxNode {
     you: Battlesnake,
     turn: u32,
@@ -56,7 +56,7 @@ pub fn get_move(game: &Game, turn: &u32, board: &Board, you: &Battlesnake) -> Va
             // debug!("ROOT move: {:?}", mv);
             (
                 mv,
-                maximise(&board, &moved_snake, &start_time, timeout - 30),
+                maximise(&board, &moved_snake, &start_time, timeout - 40),
             )
         })
         .collect();
@@ -300,7 +300,7 @@ fn score_position(board: &Board, you: &Battlesnake) -> i32 {
             } else if snake.head == you.head && you.length > snake.length && board.snakes.len() == 2
             {
                 score = i32::MAX;
-            } else if snake.head == you.head && you.length < snake.length {
+            } else if snake.body.contains(you.head) {
                 score -= killing_ratio;
             }
         }
@@ -335,9 +335,10 @@ fn maximise(board: &Board, you: &Battlesnake, start_date: &Instant, max_duration
 
     let mut duration = start_date.elapsed().as_millis();
 
-    while duration <= max_duration && !stack.is_empty() {
-        // debug!("queued events {:?}", stack);
-        let node = stack.pop_back().unwrap();
+    while let Some(node) = stack.pop_front() {
+        if duration >= max_duration {
+            break;
+        }
         let score = score_position(board, &node.you);
         max_score = max_score.max(score + node.turn as i32);
 
@@ -355,6 +356,74 @@ fn maximise(board: &Board, you: &Battlesnake, start_date: &Instant, max_duration
 
     max_score
 }
+
+// fn maximise(board: &Board, you: &Battlesnake, start_date: &Instant, max_duration: u128) -> i32 {
+//     let possible_moves = available_moves(board, you);
+//     let mut max_score = score_position(board, you);
+
+//     if possible_moves.is_empty() || max_score == i32::MIN {
+//         return max_score;
+//     }
+
+//     // Limit the number of threads to 4
+//     let num_threads = 4;
+//     let thread_pool = Arc::new(Mutex::new(VecDeque::new()));
+
+//     let mut stack: VecDeque<MinimaxNode> = VecDeque::new();
+//     for mv in possible_moves {
+//         stack.push_back(MinimaxNode {
+//             you: move_snake(board, you, &mv),
+//             turn: 1,
+//         });
+//     }
+
+//     let duration = start_date.elapsed().as_millis();
+
+//     while !stack.is_empty() {
+//         if duration >= max_duration {
+//             break;
+//         }
+
+//         let node = stack.pop_front().unwrap();
+//         let thread_pool_clone = Arc::clone(&thread_pool);
+//         let board_clone = board.clone();
+//         let start_date_clone = *start_date;
+
+//         let handle = thread::spawn(move || {
+//             let score = score_position(&board_clone, &node.you);
+//             let mut max_score = score + node.turn as i32;
+
+//             if score != i32::MIN {
+//                 for mv in available_moves(&board_clone, &node.you) {
+//                     let moved_snake = move_snake(&board_clone, &node.you, &mv);
+//                     thread_pool_clone.lock().unwrap().push_back(MinimaxNode {
+//                         you: moved_snake,
+//                         turn: node.turn + 1,
+//                     });
+//                 }
+//             }
+//         });
+
+//         handle.join().unwrap();
+
+//         // Update duration after each thread finishes
+//         let duration = start_date_clone.elapsed().as_millis();
+//     }
+
+//     // Get the maximum node from the thread pool based on score
+//     let max_node = thread_pool
+//         .lock()
+//         .unwrap()
+//         .iter()
+//         .cloned()
+//         .max_by_key(|node| node.turn)
+//         .unwrap_or(MinimaxNode {
+//             you: you.clone(),
+//             turn: 0,
+//         });
+
+//     max_node.turn as i32
+// }
 
 // fn maximise(board: &Board, you: &Battlesnake, start_date: &Instant, max_duration: u128, turn: u32) -> i32 {
 //     let possible_moves = available_moves(board, you);
@@ -716,7 +785,7 @@ mod tests_maximise {
         };
 
         let start = Instant::now();
-        let left_moved_snake = move_snake(&board, &you.clone(), &Move::Left);
+        let left_moved_snake = move_snake(&board, &you, &Move::Left);
         println!("left_moved_snake {:?}", left_moved_snake);
 
         let right_moved_snake = move_snake(&board, &you, &Move::Right);
@@ -724,11 +793,11 @@ mod tests_maximise {
 
         println!(
             "maximise_left: {}",
-            maximise(&board, &left_moved_snake, &start, 40)
+            maximise(&board, &left_moved_snake, &start, 200000)
         );
         println!(
             "maximise_right: {}",
-            maximise(&board, &right_moved_snake, &start, 40)
+            maximise(&board, &right_moved_snake, &start, 200000)
         );
     }
 
@@ -815,9 +884,9 @@ mod tests_maximise {
             "score for move_left {}",
             maximise(
                 &board,
-                &move_snake(&board, &you.clone(), &Move::Left),
+                &move_snake(&board, &you, &Move::Left),
                 &start_time,
-                500,
+                20000,
             )
         );
         println!(
@@ -826,7 +895,7 @@ mod tests_maximise {
                 &board,
                 &move_snake(&board, &you, &Move::Down),
                 &start_time,
-                500,
+                20000,
             )
         );
     }
