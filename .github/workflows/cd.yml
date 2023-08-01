@@ -26,7 +26,7 @@ jobs:
         port: 22
         script: |
           cd ~/home/ubuntu/desarrollo/boa
-          git pull origin master
+          git pull origin main
           git status
           killall boa
           cargo run --release
