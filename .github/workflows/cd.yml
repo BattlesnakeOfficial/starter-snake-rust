@@ -28,5 +28,6 @@ jobs:
           cd ~/desarrollo/boa
           git pull origin main
           git status
-          killall boa
+          /bin/bash
+          killall boa || echo "Boa was not running"
           cargo run --release
