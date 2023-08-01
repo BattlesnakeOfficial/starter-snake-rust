@@ -25,7 +25,7 @@ jobs:
         key: ${{ secrets.PRIVATE_KEY }}
         port: 22
         script: |
-          cd ~/home/ubuntu/desarrollo/boa
+          cd ~/desarrollo/boa
           git pull origin main
           git status
           killall boa
