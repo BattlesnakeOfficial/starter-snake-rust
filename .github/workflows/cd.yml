@@ -1,6 +1,6 @@
 # This is a basic workflow to help you get started with Actions
 
-name: Rust CD
+name: Deploy BOA to Oracle
 
 # Controls when the action will run.
 on:
@@ -26,10 +26,12 @@ jobs:
         port: 22
         script: |
           /bin/bash
-          cd /home/ubuntu
+          cd ~
           source .profile
           source .bashrc
-          cd /home/ubuntu/desarrollo/boa
-          git pull origin main
+          cd ~/desarrollo/boa
+          git pull --rebase origin main
           cargo build --release
           sudo systemctl restart boa
+          exit
+          exit
