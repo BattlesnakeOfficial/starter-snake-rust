@@ -1,18 +1,4 @@
-# Battlesnake Rust Starter Project
-
-An official Battlesnake template written in Rust. Get started at [play.battlesnake.com](https://play.battlesnake.com).
-
-![Battlesnake Logo](https://media.battlesnake.com/social/StarterSnakeGitHubRepos_Rust.png)
-
-This project is a great starting point for anyone wanting to program their first Battlesnake in Rust. It can be run locally or easily deployed to a cloud provider of your choosing. See the [Battlesnake API Docs](https://docs.battlesnake.com/api) for more detail. 
-
-[![Run on Replit](https://repl.it/badge/github/BattlesnakeOfficial/starter-snake-rust)](https://replit.com/@Battlesnake/starter-snake-rust)
-
-## Technologies Used
-
-This project uses [Rust](https://www.rust-lang.org/) and [Rocket](https://rocket.rs). It also comes with an optional [Dockerfile](https://docs.docker.com/engine/reference/builder/) to help with deployment.
-
-## Run Your Battlesnake
+## Run boa
 
 ```sh
 cargo run
@@ -42,7 +28,21 @@ Command to run a local game
 battlesnake play -W 11 -H 11 --name 'Rust Starter Project' --url http://localhost:8000 -g solo --browser
 ```
 
-## Next Steps
+## Github action
+
+When something got merged to `main` a Github action will publish to production.
+
+## TO-DO
+
+Lots of things are pending, this is a very unusable / not-competitive snake that I use to learn Rust and infrastructure stuff
+ - Warped maps
+ - The minimize part of minimax
+ - Move opponent snakes during minimax (currently had been tested in solo mode)
+ - Improve resource usage (par_map does a great job, but there is a lot of place for improvement)
+ - Prepare a an staging snake (perhaps with a Github Action looking at staging branch?)
+ - Prepare an infrastructure branch for automation the creation of Systemd services / environments 
+
+## More info on battlesnake
 
 Continue with the [Battlesnake Quickstart Guide](https://docs.battlesnake.com/quickstart) to customize and improve your Battlesnake's behavior.
 

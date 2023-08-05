@@ -1,13 +1,12 @@
 // Welcome to
-// __________         __    __  .__                               __
-// \______   \_____ _/  |__/  |_|  |   ____   ______ ____ _____  |  | __ ____
-//  |    |  _/\__  \\   __\   __\  | _/ __ \ /  ___//    \\__  \ |  |/ // __ \
-//  |    |   \ / __ \|  |  |  | |  |_\  ___/ \___ \|   |  \/ __ \|    <\  ___/
-//  |________/(______/__|  |__| |____/\_____>______>___|__(______/__|__\\_____>
 //
-// This file can be a nice home for your Battlesnake logic and helper functions.
+//             ____                ____              _
+//            | __ )  ___   __ _  / ___| _ __   __ _| | _____
+//            |  _ \ / _ \ / _` | \___ \| '_ \ / _` | |/ / _ \
+//            | |_) | (_) | (_| |  ___) | | | | (_| |   <  __/
+//            |____/ \___/ \__,_| |____/|_| |_|\__,_|_|\_\___|
 //
-// To get you started we've included code to prevent your Battlesnake from moving backwards.
+//
 // For more info see docs.battlesnake.com
 
 use std::collections::HashMap;
