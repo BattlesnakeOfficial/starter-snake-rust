@@ -188,8 +188,8 @@ fn get_initial_moves() -> HashMap<Move, bool> {
         (Move::Left, true),
         (Move::Right, true),
     ]
-    .into_iter()
-    .collect()
+        .into_iter()
+        .collect()
 }
 
 // info is called when you create your Battlesnake on play.battlesnake.com
@@ -531,8 +531,8 @@ mod tests_boundaries {
             (Move::Left, true),
             (Move::Right, true),
         ]
-        .into_iter()
-        .collect();
+            .into_iter()
+            .collect();
 
         set_moves_inbound(&mut is_move_safe, &Coord { x: 5, y: 10 }, &width, &height);
 
@@ -551,8 +551,8 @@ mod tests_boundaries {
             (Move::Left, true),
             (Move::Right, true),
         ]
-        .into_iter()
-        .collect();
+            .into_iter()
+            .collect();
 
         set_moves_inbound(&mut is_move_safe, &Coord { x: 5, y: 0 }, &width, &height);
 
@@ -571,8 +571,8 @@ mod tests_boundaries {
             (Move::Left, true),
             (Move::Right, false),
         ]
-        .into_iter()
-        .collect();
+            .into_iter()
+            .collect();
 
         set_moves_inbound(&mut is_move_safe, &Coord { x: 10, y: 5 }, &width, &height);
 
@@ -591,8 +591,8 @@ mod tests_boundaries {
             (Move::Left, false),
             (Move::Right, true),
         ]
-        .into_iter()
-        .collect();
+            .into_iter()
+            .collect();
 
         set_moves_inbound(&mut is_move_safe, &Coord { x: 0, y: 5 }, &width, &height);
 
@@ -618,8 +618,8 @@ mod tests_self_collitions {
             (Move::Left, true),
             (Move::Right, true),
         ]
-        .into_iter()
-        .collect();
+            .into_iter()
+            .collect();
 
         set_moves_collide_self(&mut is_move_safe, &you);
 
