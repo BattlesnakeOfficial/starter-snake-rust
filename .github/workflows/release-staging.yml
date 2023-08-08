@@ -73,6 +73,6 @@ jobs:
           sudo systemctl stop boa-stg
           curl -LO "https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.new_tag }}/boa"
           chmod +x boa
-          sudo systemctl restart boa-stg
+          sudo systemctl start boa-stg
           exit
           exit
