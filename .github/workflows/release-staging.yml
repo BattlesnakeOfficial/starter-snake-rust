@@ -110,6 +110,7 @@ jobs:
           git checkout staging
           git pull --rebase origin staging
           cargo build --release
+          sudo systemctl stop boa-stg
           cp target/release/boa ../../battlesnake/staging/
           sudo systemctl restart boa-stg
           exit
