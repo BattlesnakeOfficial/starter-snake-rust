@@ -33,19 +33,19 @@ pub fn info() -> Value {
 }
 
 // start is called when your Battlesnake begins a game
-pub fn start(_game: &Game, _turn: &u32, _board: &Board, _you: &Battlesnake) {
+pub fn start(_game: &Game, _turn: &i32, _board: &Board, _you: &Battlesnake) {
     info!("GAME START");
 }
 
 // end is called when your Battlesnake finishes a game
-pub fn end(_game: &Game, _turn: &u32, _board: &Board, _you: &Battlesnake) {
+pub fn end(_game: &Game, _turn: &i32, _board: &Board, _you: &Battlesnake) {
     info!("GAME OVER");
 }
 
 // move is called on every turn and returns your next move
 // Valid moves are "up", "down", "left", or "right"
 // See https://docs.battlesnake.com/api/example-move for available data
-pub fn get_move(_game: &Game, turn: &u32, _board: &Board, you: &Battlesnake) -> Value {
+pub fn get_move(_game: &Game, turn: &i32, _board: &Board, you: &Battlesnake) -> Value {
     
     let mut is_move_safe: HashMap<_, _> = vec![
         ("up", true),
