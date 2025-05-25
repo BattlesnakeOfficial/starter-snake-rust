@@ -23,13 +23,13 @@ use crate::{Battlesnake, Board, Game};
 pub fn info() -> Value {
     info!("INFO");
 
-    return json!({
+    json!({
         "apiversion": "1",
         "author": "", // TODO: Your Battlesnake Username
         "color": "#888888", // TODO: Choose color
         "head": "default", // TODO: Choose head
         "tail": "default", // TODO: Choose tail
-    });
+    })
 }
 
 // start is called when your Battlesnake begins a game
@@ -97,5 +97,5 @@ pub fn get_move(_game: &Game, turn: &i32, _board: &Board, you: &Battlesnake) -> 
     // let food = &board.food;
 
     info!("MOVE {}: {}", turn, chosen);
-    return json!({ "move": chosen });
+    json!({ "move": chosen })
 }
