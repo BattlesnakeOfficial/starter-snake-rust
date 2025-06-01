@@ -6,7 +6,7 @@ use rocket::fairing::AdHoc;
 use rocket::http::Status;
 use rocket::serde::{json::Json, Deserialize};
 use serde::Serialize;
-use serde_json::{Value};
+use serde_json::Value;
 use std::collections::HashMap;
 use std::env;
 
